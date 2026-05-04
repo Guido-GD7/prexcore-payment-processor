@@ -207,13 +207,13 @@ Using `rust_decimal` ensures:
 
 ```mermaid
 flowchart LR
-    Client --> API[Actix Web API]
-    API --> Workers[Actix Workers]
-    Workers --> State[In-memory State]
-    State --> HashMap[HashMap<ClientId, Balance>]
-    State --> Lock[Arc + RwLock]
-    API --> Store[Persist Endpoint]
-    Store --> Files[.DAT Files]
+    Client["Client / Tester"] --> API["Actix Web API"]
+    API --> Workers["Actix Workers"]
+    Workers --> State["In-memory State"]
+    State --> HashMap["HashMap ClientId -> Balance"]
+    State --> Lock["Arc + RwLock"]
+    API --> Store["Persist Endpoint"]
+    Store --> Files[".DAT Files"]
 ```
 
 ---
@@ -225,7 +225,7 @@ flowchart TD
     A["POST /api/new_client"] --> B["Create Client"]
     C["POST /api/new_credit_transaction"] --> D["Increase Balance"]
     E["POST /api/new_debit_transaction"] --> F["Decrease Balance"]
-    G["GET /api/client_balance (id)"] --> H["Return Balance"]
+    G["GET /api/client_balance?user_id"] --> H["Return Balance"]
     I["POST /api/store_balances"] --> J["Write Files"]
 ```
 
