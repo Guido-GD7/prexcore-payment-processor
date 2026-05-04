@@ -1,0 +1,13 @@
+version: "3.9"
+
+services:
+  app:
+    build: .
+    container_name: prexcore-payment-processor
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    volumes:
+      - ./balances:/app/balances
+    restart: unless-stopped

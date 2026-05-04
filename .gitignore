@@ -1,0 +1,19 @@
+# Rust build artifacts
+/target/
+
+# Environment variables (DO NOT COMMIT)
+.env
+.env.*
+
+# Generated balance files
+/balances/
+*.DAT
+
+# Logs
+*.log
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

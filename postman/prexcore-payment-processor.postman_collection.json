@@ -1,0 +1,733 @@
+{
+  "info": {
+    "name": "PrexCORE Payment Processor",
+    "description": "Postman collection for testing the PrexCORE Payment Processor API. Includes happy paths and edge cases: duplicate clients, missing clients, invalid amounts, overdraft validation, balance lookup, and balance persistence.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "client_id_1",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "client_id_2",
+      "value": "2",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health / Basic",
+      "item": [
+        {
+          "name": "Store balances with no clients - should fail",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/store_balances",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "store_balances"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400 or 500 depending on implementation', function () {",
+                  "    pm.expect([400, 500]).to.include(pm.response.code);",
+                  "});",
+                  "",
+                  "pm.test('Response has error code and message', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('code');",
+                  "    pm.expect(json).to.have.property('message');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Clients",
+      "item": [
+        {
+          "name": "Create client 1 - success",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"client_name\": \"Ada Lovelace\",\n  \"birth_date\": \"1815-12-10\",\n  \"document_number\": \"DOC-POSTMAN-1\",\n  \"country\": \"UK\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/new_client",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "new_client"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const json = pm.response.json();",
+                  "pm.test('Response has client_id', function () {",
+                  "    pm.expect(json).to.have.property('client_id');",
+                  "});",
+                  "",
+                  "pm.collectionVariables.set('client_id_1', json.client_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create client 2 - success",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"client_name\": \"Alan Turing\",\n  \"birth_date\": \"1912-06-23\",\n  \"document_number\": \"DOC-POSTMAN-2\",\n  \"country\": \"UK\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/new_client",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "new_client"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const json = pm.response.json();",
+                  "pm.test('Response has client_id', function () {",
+                  "    pm.expect(json).to.have.property('client_id');",
+                  "});",
+                  "",
+                  "pm.collectionVariables.set('client_id_2', json.client_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create duplicate client - should fail",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"client_name\": \"Duplicate Client\",\n  \"birth_date\": \"2000-01-01\",\n  \"document_number\": \"DOC-POSTMAN-1\",\n  \"country\": \"AR\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/new_client",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "new_client"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 409 Conflict', function () {",
+                  "    pm.response.to.have.status(409);",
+                  "});",
+                  "",
+                  "const json = pm.response.json();",
+                  "pm.test('Duplicate document error code', function () {",
+                  "    pm.expect(json.code).to.eql('DUPLICATE_DOCUMENT_NUMBER');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create client with empty name - should fail",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"client_name\": \"\",\n  \"birth_date\": \"1990-01-01\",\n  \"document_number\": \"DOC-EMPTY-NAME\",\n  \"country\": \"AR\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/new_client",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "new_client"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400 Bad Request', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "const json = pm.response.json();",
+                  "pm.test('Invalid client data error code', function () {",
+                  "    pm.expect(json.code).to.eql('INVALID_CLIENT_DATA');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Transactions",
+      "item": [
+        {
+          "name": "Credit client 1 - success",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"client_id\": \"{{client_id_1}}\",\n  \"amount\": \"100.00\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/new_credit_transaction",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "new_credit_transaction"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const json = pm.response.json();",
+                  "pm.test('Balance is 100.00', function () {",
+                  "    pm.expect(json.balance).to.eql('100.00');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Credit client 2 - success",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"client_id\": \"{{client_id_2}}\",\n  \"amount\": \"250.00\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/new_credit_transaction",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "new_credit_transaction"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const json = pm.response.json();",
+                  "pm.test('Balance is 250.00', function () {",
+                  "    pm.expect(json.balance).to.eql('250.00');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Debit client 1 - success",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"client_id\": \"{{client_id_1}}\",\n  \"amount\": \"30.00\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/new_debit_transaction",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "new_debit_transaction"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const json = pm.response.json();",
+                  "pm.test('Balance is 70.00', function () {",
+                  "    pm.expect(json.balance).to.eql('70.00');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Credit missing client - should fail",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"client_id\": 999999,\n  \"amount\": \"10.00\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/new_credit_transaction",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "new_credit_transaction"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 404 Not Found', function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "",
+                  "const json = pm.response.json();",
+                  "pm.test('Client not found error code', function () {",
+                  "    pm.expect(json.code).to.eql('CLIENT_NOT_FOUND');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Credit zero amount - should fail",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"client_id\": \"{{client_id_1}}\",\n  \"amount\": \"0\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/new_credit_transaction",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "new_credit_transaction"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400 Bad Request', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "const json = pm.response.json();",
+                  "pm.test('Invalid amount error code', function () {",
+                  "    pm.expect(json.code).to.eql('INVALID_AMOUNT');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Credit negative amount - should fail",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"client_id\": \"{{client_id_1}}\",\n  \"amount\": \"-10.00\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/new_credit_transaction",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "new_credit_transaction"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400 Bad Request', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "const json = pm.response.json();",
+                  "pm.test('Invalid amount error code', function () {",
+                  "    pm.expect(json.code).to.eql('INVALID_AMOUNT');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Debit beyond overdraft limit - should fail",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"client_id\": \"{{client_id_1}}\",\n  \"amount\": \"5000.00\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/new_debit_transaction",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "new_debit_transaction"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400 Bad Request', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "const json = pm.response.json();",
+                  "pm.test('Overdraft limit error code', function () {",
+                  "    pm.expect(json.code).to.eql('OVERDRAFT_LIMIT_EXCEEDED');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Balances",
+      "item": [
+        {
+          "name": "Get client 1 balance - success",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/client_balance?user_id={{client_id_1}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client_balance"
+              ],
+              "query": [
+                {
+                  "key": "user_id",
+                  "value": "{{client_id_1}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const json = pm.response.json();",
+                  "pm.test('Response has balance', function () {",
+                  "    pm.expect(json).to.have.property('balance');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get missing client balance - should fail",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/client_balance?user_id=999999",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client_balance"
+              ],
+              "query": [
+                {
+                  "key": "user_id",
+                  "value": "999999"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 404 Not Found', function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "",
+                  "const json = pm.response.json();",
+                  "pm.test('Client not found error code', function () {",
+                  "    pm.expect(json.code).to.eql('CLIENT_NOT_FOUND');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Store balances - success",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/store_balances",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "store_balances"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const json = pm.response.json();",
+                  "pm.test('Response has file_name and stored_clients', function () {",
+                  "    pm.expect(json).to.have.property('file_name');",
+                  "    pm.expect(json).to.have.property('stored_clients');",
+                  "});",
+                  "",
+                  "pm.test('File name ends with .DAT', function () {",
+                  "    pm.expect(json.file_name).to.match(/\\.DAT$/);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get client 1 balance after store - should be zero",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/client_balance?user_id={{client_id_1}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "client_balance"
+              ],
+              "query": [
+                {
+                  "key": "user_id",
+                  "value": "{{client_id_1}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const json = pm.response.json();",
+                  "pm.test('Balance reset to zero', function () {",
+                  "    pm.expect(json.balance).to.eql('0');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
