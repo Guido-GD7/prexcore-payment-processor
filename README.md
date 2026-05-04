@@ -222,11 +222,11 @@ flowchart LR
 
 ```mermaid
 flowchart TD
-    A[POST api/new_client] --> B[Create Client]
-    C[POST api/new_credit_transaction] --> D[Increase Balance]
-    E[POST api/new_debit_transaction] --> F[Decrease Balance]
-    G[GET api/client_balance/{id}] --> H[Return Balance]
-    I[POST api/store_balances] --> J[Write Files]
+    A["POST /api/new_client"] --> B["Create Client"]
+    C["POST /api/new_credit_transaction"] --> D["Increase Balance"]
+    E["POST /api/new_debit_transaction"] --> F["Decrease Balance"]
+    G["GET /api/client_balance (id)"] --> H["Return Balance"]
+    I["POST /api/store_balances"] --> J["Write Files"]
 ```
 
 ---
